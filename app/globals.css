@@ -749,6 +749,7 @@ input[type="checkbox"] {
 .workout-card .row-actions {
   margin-top: 26px;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 .empty-state {
   padding: 60px 25px;

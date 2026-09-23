@@ -1,6 +1,13 @@
 "use client";
 import { useState } from "react";
-import { Copy, MessageCircle, Share2, Loader2 } from "lucide-react";
+import {
+  Copy,
+  MessageCircle,
+  Share2,
+  Loader2,
+  Download,
+  ExternalLink,
+} from "lucide-react";
 import { api } from "@/lib/supabase";
 import { eligible, type Student } from "@/lib/model";
 import {
@@ -23,6 +30,8 @@ export default function WhatsAppShare({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   const [nativeShare, setNativeShare] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const publicUrl = isPublicShareUrl(url);
   const message = shareMessage(week, url);
   async function prepare() {
@@ -35,6 +44,7 @@ export default function WhatsAppShare({
         );
       const result = await api("/api/publish", { workoutId });
       setUrl(result.url);
+      setPdfUrl(result.pdfUrl);
       setNativeShare(typeof navigator.share === "function");
     } catch (e) {
       setNotice(
@@ -49,11 +59,40 @@ export default function WhatsAppShare({
       "WhatsApp aberto. Escolha o destino e confirme o envio lá. O sistema não confirma envio ou entrega.",
     );
   }
+  async function downloadPdf() {
+    setDownloading(true);
+    try {
+      const response = await fetch(pdfUrl);
+      if (
+        !response.ok ||
+        !response.headers.get("content-type")?.includes("application/pdf")
+      )
+        throw new Error("Não foi possível gerar o PDF. Tente novamente.");
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `thales-franco-semana-${week}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      setNotice(
+        "PDF pronto para baixar. Anexe o arquivo e cole o link na conversa com os alunos.",
+      );
+    } catch (e) {
+      setNotice(
+        e instanceof Error ? e.message : "Não foi possível baixar o PDF.",
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }
   return (
     <div className="modal-body whatsapp-share">
       <p className="muted">
-        Compartilhe no grupo ou com um aluno. A mensagem fica pronta; você
-        confirma o envio no WhatsApp, sem contratar uma API.
+        Baixe o PDF e compartilhe a página com os alunos, sem login. A página
+        permite assistir aos vídeos e baixar o treino. O PDF também inclui o
+        link da página.
       </p>
       {!url ? (
         <button className="btn primary" disabled={busy} onClick={prepare}>
@@ -62,10 +101,52 @@ export default function WhatsAppShare({
           ) : (
             <MessageCircle size={16} />
           )}{" "}
-          Preparar link do treino
+          Gerar PDF e link público
         </button>
       ) : (
         <>
+          <label>
+            Link público · acesso sem login
+            <input readOnly value={url} onFocus={(e) => e.target.select()} />
+          </label>
+          <div className="share-actions">
+            <button
+              className="btn primary"
+              disabled={!pdfUrl || downloading}
+              onClick={downloadPdf}
+            >
+              {downloading ? (
+                <Loader2 size={16} className="spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              {downloading ? "Gerando PDF…" : "Baixar PDF"}
+            </button>
+            <button
+              className="btn secondary"
+              disabled={!publicUrl}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setNotice("Link copiado. Os alunos podem abrir sem login.");
+                } catch {
+                  setNotice("Selecione e copie o link no campo acima.");
+                }
+              }}
+            >
+              <Copy size={16} /> Copiar link
+            </button>
+            {publicUrl && (
+              <a
+                className="btn secondary"
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink size={16} /> Abrir página
+              </a>
+            )}
+          </div>
           <label>
             Mensagem para o grupo
             <textarea readOnly rows={8} value={message} />

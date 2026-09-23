@@ -59,6 +59,20 @@ test("SQL is rerunnable; RLS isolates administrators and public; delivery claims
     await db.exec(`set role authenticated;set request.jwt.claim.sub='${a}'`);
     await assert.rejects(db.query(`update publications set revoked=true`));
     assert.equal((await db.query("select * from deliveries")).rows.length, 1);
+    await db.exec(`set request.jwt.claim.sub='${b}'`);
+    assert.equal(
+      (await db.query(`delete from workouts where id='${w.id}' returning id`))
+        .rows.length,
+      0,
+    );
+    await db.exec(`set request.jwt.claim.sub='${a}'`);
+    assert.equal(
+      (await db.query(`delete from workouts where id='${w.id}' returning id`))
+        .rows.length,
+      1,
+    );
+    assert.equal((await db.query("select * from publications")).rows.length, 0);
+    assert.equal((await db.query("select * from deliveries")).rows.length, 0);
   } finally {
     await db.close();
   }

@@ -100,6 +100,10 @@ export default function Studio() {
     } | null>(null),
     [preview, setPreview] = useState<Workout | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  const [shareWorkout, setShareWorkout] = useState<{
+    id: string;
+    week: number;
+  } | null>(null);
   const locked = useRef(false);
   const inform = (s: string) => setNotice(s);
   const problem = (e: unknown) =>
@@ -382,12 +386,47 @@ export default function Studio() {
   }
   async function prepareWhatsApp() {
     if (!editor) return;
+    let id = editingId;
     if (dirty || !editingId) {
-      const id = await save();
+      id = await save();
       if (!id) return;
     }
+    setShareWorkout({ id: id!, week: editor.week });
     setNotice("");
     setModal("whatsapp");
+  }
+  async function removeWorkout(row: WorkoutRow) {
+    if (
+      locked.current ||
+      !confirm(
+        `Apagar "${row.content.title}"? Esta ação também remove o histórico de envios deste treino e desativa os links e PDFs compartilhados. Não é possível desfazer.`,
+      )
+    )
+      return;
+    locked.current = true;
+    setBusy(true);
+    try {
+      if (!demo) {
+        const { data, error } = await supabase!
+          .from("workouts")
+          .delete()
+          .eq("id", row.id)
+          .select("id")
+          .single();
+        if (error || !data)
+          throw new Error(
+            "Não foi possível apagar o treino. Atualize a página e tente novamente.",
+          );
+      }
+      setWorkouts((old) => old.filter((w) => w.id !== row.id));
+      if (!demo) await load();
+      inform("Treino apagado. Os links compartilhados foram desativados.");
+    } catch (e) {
+      problem(e);
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
   }
   async function prepareSend() {
     if (!editor) return;
@@ -870,6 +909,17 @@ export default function Studio() {
                     <div className="row-actions">
                       <button
                         className="btn secondary"
+                        disabled={busy}
+                        onClick={() => {
+                          setShareWorkout({ id: w.id, week: w.content.week });
+                          setNotice("");
+                          setModal("whatsapp");
+                        }}
+                      >
+                        <FileText size={16} /> PDF e link
+                      </button>
+                      <button
+                        className="btn secondary"
                         onClick={() => openWorkout(w)}
                       >
                         Editar <ArrowUpRight size={15} />
@@ -887,6 +937,15 @@ export default function Studio() {
                         }}
                       >
                         <Copy size={17} />
+                      </button>
+                      <button
+                        className="icon-btn"
+                        disabled={busy}
+                        aria-label={`Apagar ${w.content.title}`}
+                        title="Apagar treino"
+                        onClick={() => removeWorkout(w)}
+                      >
+                        <Trash2 size={17} />
                       </button>
                     </div>
                   </article>
@@ -941,7 +1000,7 @@ export default function Studio() {
                     disabled={busy}
                     onClick={prepareWhatsApp}
                   >
-                    <MessageCircle size={16} /> WhatsApp
+                    <FileText size={16} /> PDF e link
                   </button>
                   <button
                     className="btn primary"
@@ -1555,7 +1614,7 @@ export default function Studio() {
                   ? "Editar aluno"
                   : "Novo aluno"
                 : modal === "whatsapp"
-                  ? "Compartilhar no WhatsApp"
+                  ? "Exportar e compartilhar"
                   : modal === "send"
                     ? "Pronto para compartilhar?"
                     : "Experiência do aluno"}
@@ -1679,10 +1738,11 @@ export default function Studio() {
           </form>
         )}
         {modal === "preview" && preview && <WorkoutView workout={preview} />}
-        {modal === "whatsapp" && editingId && editor && (
+        {modal === "whatsapp" && shareWorkout && (
           <WhatsAppShare
-            workoutId={editingId}
-            week={editor.week}
+            key={shareWorkout.id}
+            workoutId={shareWorkout.id}
+            week={shareWorkout.week}
             students={students}
             demo={demo}
           />

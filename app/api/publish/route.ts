@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       id: pub.id,
       url: `${appUrl()}/treino/${pub.token}`,
+      pdfUrl: `/api/pdf/${pub.token}`,
     });
   } catch (e) {
     return fail(e);

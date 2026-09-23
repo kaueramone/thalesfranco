@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authorize, fail } from "@/lib/server";
+import { authorize, fail, appUrl } from "@/lib/server";
 export async function GET(req: Request) {
   try {
     await authorize(req);
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
         process.env.WHATSAPP_GRAPH_VERSION &&
         process.env.WHATSAPP_TEMPLATE_NAME
       ),
-      url: !!process.env.APP_URL,
+      url: !!appUrl(),
     });
   } catch (e) {
     return fail(e);

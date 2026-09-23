@@ -42,8 +42,9 @@ import {
   type Delivery,
 } from "@/lib/model";
 import WorkoutView from "./workout-view";
+import WhatsAppShare from "./whatsapp-share";
 type Tab = "overview" | "workouts" | "students" | "history" | "settings";
-type Modal = "student" | "preview" | "send" | null;
+type Modal = "student" | "preview" | "send" | "whatsapp" | null;
 const tabNames: Record<Tab, string> = {
   overview: "Visão geral",
   workouts: "Meus treinos",
@@ -89,7 +90,7 @@ export default function Studio() {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
-    [channels, setChannels] = useState({ email: true, whatsapp: true }),
+    [channels, setChannels] = useState({ email: true, whatsapp: false }),
     [sendProgress, setSendProgress] = useState(""),
     [sending, setSending] = useState(false);
   const [connection, setConnection] = useState<{
@@ -378,6 +379,15 @@ export default function Studio() {
     } catch (e) {
       problem(e);
     }
+  }
+  async function prepareWhatsApp() {
+    if (!editor) return;
+    if (dirty || !editingId) {
+      const id = await save();
+      if (!id) return;
+    }
+    setNotice("");
+    setModal("whatsapp");
   }
   async function prepareSend() {
     if (!editor) return;
@@ -766,7 +776,7 @@ export default function Studio() {
                     {
                       n: "03",
                       title: "Faça o treino chegar",
-                      text: "E-mail e WhatsApp em um só lugar.",
+                      text: "E-mail e compartilhamento por WhatsApp.",
                       action: () => {
                         if (latest) openWorkout(latest);
                         else inform("Crie e salve um treino para enviar.");
@@ -927,11 +937,18 @@ export default function Studio() {
                     <Save size={16} /> Salvar
                   </button>
                   <button
+                    className="btn secondary"
+                    disabled={busy}
+                    onClick={prepareWhatsApp}
+                  >
+                    <MessageCircle size={16} /> WhatsApp
+                  </button>
+                  <button
                     className="btn primary"
                     disabled={busy}
                     onClick={prepareSend}
                   >
-                    <Send size={16} /> Enviar treino
+                    <Mail size={16} /> Enviar e-mail
                   </button>
                 </div>
               </div>
@@ -1413,8 +1430,8 @@ export default function Studio() {
                   {
                     name: "WhatsApp Business",
                     icon: <MessageCircle />,
-                    ready: connection?.whatsapp,
-                    text: "Envios individuais pelo template oficial aprovado na Meta.",
+                    ready: true,
+                    text: "Compartilhamento manual no grupo ou com alunos. Sem API; confirme o envio no WhatsApp.",
                   },
                 ].map((c) => (
                   <section className="panel integration" key={c.name}>
@@ -1425,7 +1442,11 @@ export default function Studio() {
                           "status " + (c.ready ? "accepted" : "inactive")
                         }
                       >
-                        {c.ready ? "Configurado" : "Pendente"}
+                        {c.name === "WhatsApp Business"
+                          ? "Manual · sem API"
+                          : c.ready
+                            ? "Configurado"
+                            : "Pendente"}
                       </span>
                     </div>
                     <h2>{c.name}</h2>
@@ -1533,9 +1554,11 @@ export default function Studio() {
                 ? student.id
                   ? "Editar aluno"
                   : "Novo aluno"
-                : modal === "send"
-                  ? "Pronto para compartilhar?"
-                  : "Experiência do aluno"}
+                : modal === "whatsapp"
+                  ? "Compartilhar no WhatsApp"
+                  : modal === "send"
+                    ? "Pronto para compartilhar?"
+                    : "Experiência do aluno"}
             </h2>
           </div>
           <button
@@ -1656,6 +1679,14 @@ export default function Studio() {
           </form>
         )}
         {modal === "preview" && preview && <WorkoutView workout={preview} />}
+        {modal === "whatsapp" && editingId && editor && (
+          <WhatsAppShare
+            workoutId={editingId}
+            week={editor.week}
+            students={students}
+            demo={demo}
+          />
+        )}
         {modal === "send" && (
           <div className="modal-body">
             <p className="muted">
@@ -1664,7 +1695,7 @@ export default function Studio() {
               enviado.
             </p>
             <div className="send-channels">
-              {(["email", "whatsapp"] as const).map((c) => (
+              {(["email"] as const).map((c) => (
                 <label
                   className={"channel-option " + (channels[c] ? "chosen" : "")}
                   key={c}

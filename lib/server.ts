@@ -44,8 +44,7 @@ export function fail(e: unknown) {
   );
 }
 export function appUrl() {
-  const url = process.env.APP_URL;
-  if (!url) throw new Error("Configure APP_URL no servidor.");
+  const url = process.env.APP_URL || "https://thalesfranco.vercel.app";
   return url.replace(/\/$/, "");
 }
 export const uuid =

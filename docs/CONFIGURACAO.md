@@ -29,33 +29,27 @@ As tabelas têm RLS: somente administradores acessam seus próprios alunos e tre
 
 Documentação: https://resend.com/docs/api-reference/emails/send-email
 
-## 4. WhatsApp — Meta Cloud API
+## 4. WhatsApp — compartilhamento manual (sem API)
 
-Não é uma automação do WhatsApp Web. É necessário cadastrar um número no WhatsApp Business Platform, concluir as verificações exigidas pela Meta e configurar faturamento quando aplicável.
+O painel não precisa de QR Code nem credenciais Meta para esta modalidade.
 
-1. Crie o aplicativo Business na Meta e configure o produto WhatsApp.
-2. Configure token de acesso de produção, Phone Number ID e uma versão Graph API vigente no seu aplicativo em `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` e `WHATSAPP_GRAPH_VERSION` (formato `vNN.N`).
-3. Crie um template chamado `treino_semanal`, em Português (Brasil), com **3 variáveis posicionais no corpo** e sem header obrigatório ou botão dinâmico. Use `WHATSAPP_TEMPLATE_LANGUAGE=pt_BR`.
-4. Sugestão de corpo, a ser avaliada pela Meta:
+1. Configure `APP_URL` com o endereço HTTPS público do site na Vercel. Links localhost são bloqueados para compartilhamento.
+2. No editor, clique em **WhatsApp**. O sistema salva o treino antes de abrir a janela.
+3. Clique em **Preparar link do treino**. Isso publica uma cópia imutável da programação, sem contatos dos alunos.
+4. Use **Copiar mensagem** para colar no grupo ou **Abrir WhatsApp** para escolher o destino. Em dispositivos compatíveis, **Compartilhar…** abre a seleção de aplicativos.
+5. Para um aluno específico, use **Abrir conversa** na lista. Só aparecem alunos ativos com telefone válido e autorização para WhatsApp.
+6. Confirme o envio dentro do WhatsApp. O site não envia automaticamente nem consegue confirmar entrega. Abrir/copiar não cria registros de mensagens enviadas.
 
-```text
-Olá, {{1}}! Seu treino da semana {{2}} com Thales Franco está disponível.
-Confira a programação, assista aos vídeos e baixe o PDF: {{3}}
-Se não quiser mais receber, avise o treinador.
-```
+A mensagem contém o link do treino. O aluno assiste aos vídeos e baixa o PDF na página, sem login. O PDF não é anexado automaticamente ao WhatsApp.
 
-As variáveis são, nessa ordem: nome do aluno, número da semana e URL HTTPS do treino. Cadastre valores de exemplo válidos. A categoria e a aprovação dependem da Meta. Se o template tiver outro nome, ajuste `WHATSAPP_TEMPLATE_NAME`. Não altere a quantidade/posição das variáveis sem atualizar a integração.
-
-O WhatsApp recebe o link da página, onde há botão de download do PDF. Não envia o PDF como documento separado. O envio é individual para a lista de alunos, não para um grupo do WhatsApp.
-
-Referência oficial: https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-reference/messages/template/
+A integração Meta anterior permanece no backend como opção futura, mas não é acionada pelo fluxo manual. As variáveis `WHATSAPP_*` são opcionais e não precisam ser preenchidas.
 
 ## 5. Operação semanal
 
 1. Cadastre os alunos com nome, nascimento opcional e um ou ambos os contatos. Use WhatsApp internacional, por exemplo `+5511999999999`. Registre somente canais autorizados pelo aluno.
 2. Crie ou duplique a programação. Os títulos são livres; blocos sugeridos: Warm-up, Running, Strength, HYROX Stations e Cool-down. O exemplo demonstrativo não é uma prescrição de treino.
 3. Adicione exercícios e links HTTPS do YouTube. Prévia permite conferir o treino e abrir vídeos em pop-up.
-4. Salve, clique em Enviar treino, selecione alunos/canais e confirme. Mantenha a página aberta durante o lote.
+4. Salve, clique em Enviar e-mail, selecione os alunos e confirme. Para WhatsApp, use o botão separado e confirme no aplicativo. Mantenha a página aberta durante o lote.
 5. Consulte Envios. O processamento é individual; falhas de um aluno não interrompem os outros.
 
 ## 6. Comportamento dos envios
@@ -74,7 +68,7 @@ Referência oficial: https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-referenc
 
 Use apenas um contato seu como aluno de teste, com autorização dos canais. Confira login, persistência após atualizar, edição, link publicado, vídeo real e PDF. Teste cada canal separado e confira o recebimento no dispositivo. Só depois selecione os alunos reais.
 
-Sem SQLs, chaves e configuração dos provedores não é possível validar disparos reais. O modo de demonstração é temporário, não persiste nem envia mensagens.
+Sem SQLs e chaves do Supabase não é possível publicar treinos. E-mails exigem Resend configurado; compartilhamento manual do WhatsApp exige uma URL pública, sem provedor adicional. O modo de demonstração é temporário, não persiste nem envia mensagens.
 
 ## Desenvolvimento
 
@@ -87,3 +81,8 @@ npm run build
 ```
 
 O PDF é gerado no servidor com a foto em `public/cover-photo.jpeg`, sobreposição escura e logo branca centralizada. Ele tem links clicáveis; iframes são exibidos apenas na página web. A foto original e as logos fornecidas foram preservadas na pasta de trabalho.
+## Ícones e instalação
+
+O favicon original está em `favicon.png`. O projeto inclui favicon de navegador, Apple Touch Icon e ícones de 192/512 px com manifest para atalhos no celular e no computador. A experiência continua exigindo internet e login; não há cache offline de dados privados.
+
+O endereço público padrão é `https://thalesfranco.vercel.app`. `APP_URL` pode substituí-lo; se essa variável já estiver configurada na Vercel, mantenha o mesmo endereço HTTPS e faça redeploy.

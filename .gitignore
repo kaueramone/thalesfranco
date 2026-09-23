@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+reference*.png
+*.cdr
+thales-franco*.png
+tmp/
+foto-thalesfranco.jpeg
+output/pdf/page-*.png
